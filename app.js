@@ -15,7 +15,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // TU ÚLTIMA URL DE GOOGLE APPS SCRIPT
-const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbyfqzu8Ft46qjhw5zYKpOdnlHKMpr2Eb_5I7KLmRRytaFo4QGaZX5wB9GrWo3Qnl-iarw/exec";
+const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbxUvLFGUEtFVWKQ3DOlC9vyESNU0yMs7EW5IYoWP03y-166JpGmfT5mQTCm8ZM4B9yCbw/exec";
 
 // Referencias DOM
 const inputFecha = document.getElementById('fecha');
