@@ -1,4 +1,3 @@
-// app.js - Configuración e Importación de Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -11,11 +10,12 @@ const firebaseConfig = {
     appId: "1:861629507139:web:9b73314bc72180b22f56f6"
 };
 
-// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Referencias DOM
+// PEGA AQUÍ LA URL QUE TE DIO GOOGLE APPS SCRIPT
+const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbzMKvVGBKvfjIUTV_LQz_TjMfHrOSO0-qjJw6hjpHd60fGQsF11nLanBfn-2vUmIRC9xA/exec";
+
 const inputFecha = document.getElementById('fecha');
 const inputDiaVisual = document.getElementById('diaVisual');
 const inputHora = document.getElementById('hora');
@@ -29,7 +29,6 @@ const listaTurnos = document.getElementById('listaTurnos');
 
 const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// 1. Auto-completar el día de la semana
 inputFecha.addEventListener('change', (e) => {
     if(!e.target.value) {
         inputDiaVisual.value = '';
@@ -40,7 +39,6 @@ inputFecha.addEventListener('change', (e) => {
     inputDiaVisual.value = diasSemana[numeroDia];
 });
 
-// 2. Botón de Google Maps dinámico
 inputDireccion.addEventListener('input', (e) => {
     if(e.target.value.trim().length > 3) {
         btnMaps.style.display = 'block';
@@ -54,7 +52,6 @@ btnMaps.addEventListener('click', () => {
     window.open(`https://www.google.com/maps/search/?api=1&query=${direccion}`, '_blank');
 });
 
-// Botón de WhatsApp dinámico
 inputTelefono.addEventListener('input', (e) => {
     if(e.target.value.trim().length >= 8) {
         btnWhatsapp.style.display = 'block';
@@ -68,7 +65,6 @@ btnWhatsapp.addEventListener('click', () => {
     window.open(`https://wa.me/${tel}`, '_blank');
 });
 
-// 3. Validación y Guardado en Firebase
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     mensajeError.textContent = '';
@@ -78,7 +74,6 @@ form.addEventListener('submit', async (e) => {
     const fechaObj = new Date(fechaSeleccionada + 'T00:00:00');
     const diaSemanaNum = fechaObj.getDay();
 
-    // --- LÓGICA ORIGINAL DE VALIDACIÓN ---
     if (diaSemanaNum === 0) {
         mensajeError.textContent = "No se agendan turnos los domingos.";
         return;
@@ -100,7 +95,6 @@ form.addEventListener('submit', async (e) => {
             return;
         }
     }
-    // --- FIN LÓGICA ORIGINAL ---
 
     try {
         const nuevoTurno = {
@@ -112,25 +106,32 @@ form.addEventListener('submit', async (e) => {
             diaTexto: inputDiaVisual.value,
             descripcion: document.getElementById('descripcion').value,
             precio: document.getElementById('precio').value || 0,
-            timestamp: new Date() // Para ordenar por creación
+            timestamp: new Date()
         };
 
-        // Guardar en Firestore
+        // 1. Guardar en Firebase
         await addDoc(collection(db, "turnos"), nuevoTurno);
         
-        alert("Turno guardado exitosamente en Firebase.");
+        // 2. Enviar a Google Calendar
+        fetch(URL_APPS_SCRIPT, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(nuevoTurno)
+        });
+
+        alert("Turno guardado y sincronizado con el calendario.");
         form.reset();
         btnMaps.style.display = 'none';
         btnWhatsapp.style.display = 'none';
         inputDiaVisual.value = '';
 
     } catch (error) {
-        console.error("Error al guardar:", error);
-        mensajeError.textContent = "Error al conectar con la base de datos.";
+        console.error("Error:", error);
+        mensajeError.textContent = "Error al procesar el turno.";
     }
 });
 
-// 4. Leer turnos de Firebase en Tiempo Real
 const q = query(collection(db, "turnos"), orderBy("timestamp", "desc"));
 onSnapshot(q, (snapshot) => {
     listaTurnos.innerHTML = '';
