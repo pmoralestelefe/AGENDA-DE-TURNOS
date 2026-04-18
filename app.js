@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Configuración de Firebase (Intacta)
+// Configuración de Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCqQbdKRB7JK_aDz0cJlaa4tvYiM21c5Eo",
     authDomain: "visitas-programadas.firebaseapp.com",
@@ -14,8 +14,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// TU NUEVA URL DE GOOGLE APPS SCRIPT
-const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbyDNJU9Urdnm4kNCO5PhqXe_ED-90vZNvtGoYcKikMbXfwrrgtFI7JmZPpMxZ-o3G0b8A/exec";
+// TU ÚLTIMA URL DE GOOGLE APPS SCRIPT
+const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbyfqzu8Ft46qjhw5zYKpOdnlHKMpr2Eb_5I7KLmRRytaFo4QGaZX5wB9GrWo3Qnl-iarw/exec";
 
 // Referencias DOM
 const inputFecha = document.getElementById('fecha');
@@ -56,7 +56,7 @@ btnWhatsapp.addEventListener('click', () => {
     window.open(`https://wa.me/${tel}`, '_blank');
 });
 
-// 3. Lógica de Guardado (Firebase + Calendar)
+// 3. Guardado en Firebase y Sincronización con Calendar
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     mensajeError.textContent = '';
@@ -66,13 +66,14 @@ form.addEventListener('submit', async (e) => {
     const fechaObj = new Date(fechaSeleccionada + 'T00:00:00');
     const diaSemanaNum = fechaObj.getDay();
 
-    // --- LOGICA ORIGINAL DE VALIDACION (Sin Cambios) ---
+    // --- LÓGICA ORIGINAL DE VALIDACIÓN ---
     if (diaSemanaNum === 0) {
         mensajeError.textContent = "No se agendan turnos los domingos.";
         return;
     }
     const [horas, minutos] = horaSeleccionada.split(':').map(Number);
     const tiempoEnMinutos = (horas * 60) + minutos;
+
     if (diaSemanaNum >= 1 && diaSemanaNum <= 5) {
         if (tiempoEnMinutos < 540 || tiempoEnMinutos > 840) {
             mensajeError.textContent = "Horario inválido para Lunes a Viernes (09:00 a 14:00).";
@@ -85,7 +86,7 @@ form.addEventListener('submit', async (e) => {
             return;
         }
     }
-    // --- FIN VALIDACION ---
+    // --- FIN VALIDACIÓN ---
 
     try {
         const nuevoTurno = {
@@ -100,19 +101,19 @@ form.addEventListener('submit', async (e) => {
             timestamp: new Date()
         };
 
-        // Guardar en Firestore
+        // 1. Guardar en Firestore
         await addDoc(collection(db, "turnos"), nuevoTurno);
         
-        // Enviar a Google Calendar vía Web App
-        console.log("Enviando a Google Calendar...");
+        // 2. Enviar a Google Calendar vía la NUEVA Web App
+        // Usamos text/plain y mode: no-cors para evitar bloqueos del navegador
         fetch(URL_APPS_SCRIPT, {
             method: "POST",
             mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "text/plain" },
             body: JSON.stringify(nuevoTurno)
         });
 
-        alert("Turno guardado correctamente y enviado al Calendario.");
+        alert("¡Éxito! Turno guardado y sincronizado con el calendario.");
         form.reset();
         btnMaps.style.display = 'none';
         btnWhatsapp.style.display = 'none';
@@ -120,11 +121,11 @@ form.addEventListener('submit', async (e) => {
 
     } catch (error) {
         console.error("Error:", error);
-        mensajeError.textContent = "Error al conectar con la base de datos.";
+        mensajeError.textContent = "Error al guardar el turno en la base de datos.";
     }
 });
 
-// 4. Listado de Turnos en Tiempo Real
+// 4. Listado en tiempo real desde Firebase
 const q = query(collection(db, "turnos"), orderBy("timestamp", "desc"));
 onSnapshot(q, (snapshot) => {
     listaTurnos.innerHTML = '';
@@ -135,8 +136,8 @@ onSnapshot(q, (snapshot) => {
         card.innerHTML = `
             <h4>${t.diaTexto} ${t.fecha} - ${t.hora}hs</h4>
             <p><strong>Cliente:</strong> ${t.cliente} (Tel: ${t.telefono})</p>
-            <p><strong>Servicio:</strong> ${t.descripcion}</p>
             <p><strong>Dirección:</strong> ${t.direccion}</p>
+            <p><strong>Servicio:</strong> ${t.descripcion}</p>
             <p><strong>Precio:</strong> $${t.precio}</p>
         `;
         listaTurnos.appendChild(card);
