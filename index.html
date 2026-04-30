@@ -23,7 +23,7 @@
         .btn-delete { background-color: #ff5252; color: white; margin-top: 5px; }
         #mensajeError { color: var(--danger); font-size: 14px; margin-top: 10px; text-align: center; }
         
-        /* ESTILOS PARA LAS PESTAÑAS (HOJAS POR DÍA) */
+        /* ESTILOS PARA LAS PESTAÑAS */
         #listaTurnosContainer { margin-top: 30px; border-top: 1px solid #333; padding-top: 20px; }
         .tabs { display: flex; overflow-x: auto; gap: 5px; margin-bottom: 20px; padding-bottom: 5px; }
         .tabs::-webkit-scrollbar { height: 6px; }
@@ -31,7 +31,7 @@
         .tab-btn { flex: 1; min-width: 75px; padding: 10px 5px; background-color: #2c2c2c; color: var(--text-muted); border: 1px solid #444; margin-top: 0; font-size: 13px; }
         .tab-btn.active { background-color: var(--primary-color); color: #000; border-color: var(--primary-color); }
         
-        /* ESTILOS PARA LOS CONTENEDORES DE CADA DÍA */
+        /* ESTILOS HOJAS POR DÍA */
         .hoja-dia { display: none; }
         .hoja-dia.active { display: block; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -72,24 +72,24 @@
     <div id="listaTurnosContainer">
         <h3>Turnos Agendados</h3>
         
-        <!-- PESTAÑAS DE DÍAS -->
+        <!-- PESTAÑAS (Fijate que "data-target" ahora no tiene acentos para evitar errores) -->
         <div class="tabs">
-            <button type="button" class="tab-btn active" data-day="Lunes">Lunes</button>
-            <button type="button" class="tab-btn" data-day="Martes">Martes</button>
-            <button type="button" class="tab-btn" data-day="Miércoles">Miérc.</button>
-            <button type="button" class="tab-btn" data-day="Jueves">Jueves</button>
-            <button type="button" class="tab-btn" data-day="Viernes">Viernes</button>
-            <button type="button" class="tab-btn" data-day="Sábado">Sábado</button>
+            <button type="button" class="tab-btn active" data-target="Lunes">Lunes</button>
+            <button type="button" class="tab-btn" data-target="Martes">Martes</button>
+            <button type="button" class="tab-btn" data-target="Miercoles">Miérc.</button>
+            <button type="button" class="tab-btn" data-target="Jueves">Jueves</button>
+            <button type="button" class="tab-btn" data-target="Viernes">Viernes</button>
+            <button type="button" class="tab-btn" data-target="Sabado">Sábado</button>
         </div>
 
-        <!-- HOJAS POR DÍA -->
+        <!-- HOJAS POR DÍA (Tampoco tienen acentos en los ID) -->
         <div id="hojasTurnos">
             <div class="hoja-dia active" id="hoja-Lunes"></div>
             <div class="hoja-dia" id="hoja-Martes"></div>
-            <div class="hoja-dia" id="hoja-Miércoles"></div>
+            <div class="hoja-dia" id="hoja-Miercoles"></div>
             <div class="hoja-dia" id="hoja-Jueves"></div>
             <div class="hoja-dia" id="hoja-Viernes"></div>
-            <div class="hoja-dia" id="hoja-Sábado"></div>
+            <div class="hoja-dia" id="hoja-Sabado"></div>
         </div>
     </div>
 </div>
