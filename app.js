@@ -11,7 +11,6 @@ import {
     updateDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Configuración de Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCqQbdKRB7JK_aDz0cJlaa4tvYiM21c5Eo",
     authDomain: "visitas-programadas.firebaseapp.com",
@@ -34,31 +33,29 @@ const btnMaps = document.getElementById('btnMaps');
 const btnWhatsapp = document.getElementById('btnWhatsapp');
 const form = document.getElementById('turnoForm');
 const mensajeError = document.getElementById('mensajeError');
-const listaTurnos = document.getElementById('listaTurnos');
+const listadoAgrupado = document.getElementById('listadoAgrupado');
 
 let editandoId = null;
-
 const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// Auto día
+// --- LÓGICA DE FORMULARIO ---
+
 inputFecha.addEventListener('change', (e) => {
     if(!e.target.value) { inputDiaVisual.value = ''; return; }
     const fechaObj = new Date(e.target.value + 'T00:00:00'); 
     inputDiaVisual.value = diasSemana[fechaObj.getDay()];
 });
 
-// Botón Maps formulario
 inputDireccion.addEventListener('input', (e) => {
-    btnMaps.style.display = e.target.value.trim().length > 3 ? 'block' : 'none';
+    btnMaps.style.display = e.target.value.trim().length > 3 ? 'flex' : 'none';
 });
 
 btnMaps.addEventListener('click', () => {
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inputDireccion.value)}`, '_blank');
 });
 
-// Botón WhatsApp formulario
 inputTelefono.addEventListener('input', (e) => {
-    btnWhatsapp.style.display = e.target.value.trim().length >= 8 ? 'block' : 'none';
+    btnWhatsapp.style.display = e.target.value.trim().length >= 8 ? 'flex' : 'none';
 });
 
 btnWhatsapp.addEventListener('click', () => {
@@ -66,7 +63,6 @@ btnWhatsapp.addEventListener('click', () => {
     window.open(`https://wa.me/${tel}`, '_blank');
 });
 
-// GUARDAR / EDITAR
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     mensajeError.textContent = '';
@@ -76,7 +72,6 @@ form.addEventListener('submit', async (e) => {
     const fechaObj = new Date(fechaSeleccionada + 'T00:00:00');
     const diaSemanaNum = fechaObj.getDay();
 
-    // VALIDACIONES
     if (diaSemanaNum === 0) {
         mensajeError.textContent = "No se agendan turnos los domingos.";
         return;
@@ -87,14 +82,14 @@ form.addEventListener('submit', async (e) => {
 
     if (diaSemanaNum >= 1 && diaSemanaNum <= 5) {
         if (tiempoEnMinutos < 540 || tiempoEnMinutos > 840) {
-            mensajeError.textContent = "Horario inválido para Lunes a Viernes (09:00 a 14:00).";
+            mensajeError.textContent = "Horario Lunes a Viernes: 09:00 a 14:00.";
             return;
         }
     }
 
     if (diaSemanaNum === 6) {
         if (tiempoEnMinutos < 840 || tiempoEnMinutos > 1080) {
-            mensajeError.textContent = "Horario inválido para Sábados (14:00 a 18:00).";
+            mensajeError.textContent = "Horario Sábados: 14:00 a 18:00.";
             return;
         }
     }
@@ -114,91 +109,105 @@ form.addEventListener('submit', async (e) => {
     try {
         if (editandoId) {
             await updateDoc(doc(db, "turnos", editandoId), turnoData);
-            alert("Turno actualizado correctamente");
             editandoId = null;
         } else {
             await addDoc(collection(db, "turnos"), turnoData);
-            alert("Turno guardado correctamente");
         }
-
         form.reset();
         inputDiaVisual.value = '';
         btnMaps.style.display = 'none';
         btnWhatsapp.style.display = 'none';
-
     } catch (error) {
         console.error(error);
-        mensajeError.textContent = "Error al guardar.";
+        mensajeError.textContent = "Error al conectar con Firebase.";
     }
 });
 
-// LISTADO ORDENADO POR FECHA Y HORA (Esto agrupa por Lunes, Martes, etc.)
+// --- LÓGICA DE LISTADO ORDENADO ---
+
 const q = query(collection(db, "turnos"), orderBy("fecha", "asc"), orderBy("hora", "asc"));
 
 onSnapshot(q, (snapshot) => {
-    listaTurnos.innerHTML = '';
-
+    listadoAgrupado.innerHTML = '';
+    
+    // Agrupamos los turnos por el campo "diaTexto"
+    const turnosPorDia = {};
+    
     snapshot.forEach((docSnap) => {
         const t = docSnap.data();
         const id = docSnap.id;
+        if (!turnosPorDia[t.diaTexto]) {
+            turnosPorDia[t.diaTexto] = [];
+        }
+        turnosPorDia[t.diaTexto].push({ ...t, id });
+    });
 
-        const card = document.createElement('div');
-        card.className = 'turno-card';
+    // Recorremos los días en orden (Lunes a Sábado)
+    const ordenDias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-        card.innerHTML = `
-            <h4>${t.diaTexto} ${t.fecha} - ${t.hora}hs</h4>
-            <p><strong>Cliente:</strong> ${t.cliente}</p>
-            <p><strong>Tel:</strong> ${t.telefono}</p>
-            <p><strong>Dirección:</strong> ${t.direccion}</p>
-            <p><strong>Servicio:</strong> ${t.descripcion}</p>
-            <p><strong>Precio:</strong> $${t.precio}</p>
+    ordenDias.forEach(dia => {
+        if (turnosPorDia[dia]) {
+            const seccion = document.createElement('div');
+            seccion.className = 'dia-contenedor';
+            
+            seccion.innerHTML = `<div class="dia-titulo">${dia}</div>`;
+            
+            turnosPorDia[dia].forEach(turno => {
+                const card = document.createElement('div');
+                card.className = 'turno-card';
+                card.innerHTML = `
+                    <h4>${turno.hora} hs - ${turno.cliente}</h4>
+                    <p><strong>Dirección:</strong> ${turno.direccion}</p>
+                    <p><strong>Servicio:</strong> ${turno.descripcion}</p>
+                    <p><strong>Precio:</strong> $${turno.precio}</p>
+                    <p style="font-size:11px">Fecha: ${turno.fecha}</p>
 
-            <div class="actions-container">
-                <button class="btn-icon btn-card-maps" title="Ver en Maps">
-                    <img src="maps.png" alt="Maps">
-                </button>
-                <button class="btn-icon btn-card-wa" title="WhatsApp">
-                    <img src="whastapp.png" alt="WhatsApp">
-                </button>
-                <button class="btn-icon btn-card-edit" title="Reprogramar/Editar">
-                    <img src="reprogramar.png" alt="Editar">
-                </button>
-                <button class="btn-icon btn-card-delete" title="Eliminar">
-                    <img src="borrar.png" alt="Borrar">
-                </button>
-            </div>
-        `;
+                    <div class="acciones-grid">
+                        <button class="btn-accion btn-go-maps" title="Google Maps">
+                            <img src="maps.png">
+                        </button>
+                        <button class="btn-accion btn-go-whatsapp" title="WhatsApp">
+                            <img src="whastapp.png">
+                        </button>
+                        <button class="btn-accion btn-go-edit" title="Reprogramar">
+                            <img src="reprogramar.png">
+                        </button>
+                        <button class="btn-accion btn-go-delete" title="Borrar">
+                            <img src="borrar.png">
+                        </button>
+                    </div>
+                `;
 
-        // EVENTOS DE LOS BOTONES DE LA TARJETA
-        card.querySelector('.btn-card-maps').addEventListener('click', () => {
-            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.direccion)}`, '_blank');
-        });
+                // Eventos de botones
+                card.querySelector('.btn-go-maps').onclick = () => {
+                    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(turno.direccion)}`);
+                };
 
-        card.querySelector('.btn-card-wa').addEventListener('click', () => {
-            const tel = t.telefono.replace(/\D/g, '');
-            window.open(`https://wa.me/${tel}`, '_blank');
-        });
+                card.querySelector('.btn-go-whatsapp').onclick = () => {
+                    const tel = turno.telefono.replace(/\D/g, '');
+                    window.open(`https://wa.me/${tel}`);
+                };
 
-        card.querySelector('.btn-card-delete').addEventListener('click', async () => {
-            if (confirm("¿Eliminar este turno?")) {
-                await deleteDoc(doc(db, "turnos", id));
-            }
-        });
+                card.querySelector('.btn-go-delete').onclick = async () => {
+                    if (confirm("¿Eliminar turno?")) await deleteDoc(doc(db, "turnos", turno.id));
+                };
 
-        card.querySelector('.btn-card-edit').addEventListener('click', () => {
-            document.getElementById('cliente').value = t.cliente;
-            inputTelefono.value = t.telefono;
-            inputDireccion.value = t.direccion;
-            inputFecha.value = t.fecha;
-            inputHora.value = t.hora;
-            inputDiaVisual.value = t.diaTexto;
-            document.getElementById('descripcion').value = t.descripcion;
-            document.getElementById('precio').value = t.precio;
+                card.querySelector('.btn-go-edit').onclick = () => {
+                    document.getElementById('cliente').value = turno.cliente;
+                    inputTelefono.value = turno.telefono;
+                    inputDireccion.value = turno.direccion;
+                    inputFecha.value = turno.fecha;
+                    inputHora.value = turno.hora;
+                    inputDiaVisual.value = turno.diaTexto;
+                    document.getElementById('descripcion').value = turno.descripcion;
+                    document.getElementById('precio').value = turno.precio;
+                    editandoId = turno.id;
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                };
 
-            editandoId = id;
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-
-        listaTurnos.appendChild(card);
+                seccion.appendChild(card);
+            });
+            listadoAgrupado.appendChild(seccion);
+        }
     });
 });
