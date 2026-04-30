@@ -4,8 +4,6 @@ import {
     collection, 
     addDoc, 
     onSnapshot, 
-    query, 
-    orderBy,
     deleteDoc,
     doc,
     updateDoc
@@ -53,7 +51,7 @@ inputDireccion.addEventListener('input', (e) => {
 });
 
 btnMaps.addEventListener('click', () => {
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inputDireccion.value)}`, '_blank');
+    window.open(`https://maps.google.com/?q=${encodeURIComponent(inputDireccion.value)}`, '_blank');
 });
 
 // Botón WhatsApp formulario
@@ -132,15 +130,28 @@ form.addEventListener('submit', async (e) => {
     }
 });
 
-// LISTADO
-const q = query(collection(db, "turnos"), orderBy("timestamp", "desc"));
-
-onSnapshot(q, (snapshot) => {
+// LISTADO Y ORDENAMIENTO POR FECHA Y HORA
+onSnapshot(collection(db, "turnos"), (snapshot) => {
     listaTurnos.innerHTML = '';
-
+    
+    // Almacenamos en un array para poder ordenar dinámicamente
+    const turnosArray = [];
+    
     snapshot.forEach((docSnap) => {
-        const t = docSnap.data();
-        const id = docSnap.id;
+        turnosArray.push({ id: docSnap.id, ...docSnap.data() });
+    });
+
+    // Ordenar los turnos: primero por fecha, luego por hora
+    turnosArray.sort((a, b) => {
+        if (a.fecha === b.fecha) {
+            return a.hora.localeCompare(b.hora); // Si es el mismo día, ordena por hora
+        }
+        return a.fecha.localeCompare(b.fecha); // Ordena por día
+    });
+
+    // Renderizar las tarjetas ordenadas
+    turnosArray.forEach((t) => {
+        const id = t.id;
 
         const card = document.createElement('div');
         card.className = 'turno-card';
@@ -153,21 +164,31 @@ onSnapshot(q, (snapshot) => {
             <p><strong>Servicio:</strong> ${t.descripcion}</p>
             <p><strong>Precio:</strong> $${t.precio}</p>
 
-            <button class="btn-maps">Ver en Maps</button>
-            <button class="btn-whatsapp">WhatsApp</button>
-            <button class="btn-edit">Editar</button>
-            <button class="btn-delete" style="background:#ff5252;color:white;">Eliminar</button>
+            <div class="card-actions">
+                <button class="btn-action btn-maps" title="Ver en Maps">
+                    <img src="maps.png" alt="Maps">
+                </button>
+                <button class="btn-action btn-whatsapp" title="WhatsApp">
+                    <img src="whastapp.png" alt="WhatsApp">
+                </button>
+                <button class="btn-action btn-edit" title="Reprogramar">
+                    <img src="reprogramar.png" alt="Reprogramar">
+                </button>
+                <button class="btn-action btn-delete" title="Eliminar">
+                    <img src="borrar.png" alt="Eliminar">
+                </button>
+            </div>
         `;
 
         // MAPS
         card.querySelector('.btn-maps').addEventListener('click', () => {
-            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.direccion)}`);
+            window.open(`https://maps.google.com/?q=${encodeURIComponent(t.direccion)}`, '_blank');
         });
 
         // WHATSAPP
         card.querySelector('.btn-whatsapp').addEventListener('click', () => {
             const tel = t.telefono.replace(/\D/g, '');
-            window.open(`https://wa.me/${tel}`);
+            window.open(`https://wa.me/${tel}`, '_blank');
         });
 
         // ELIMINAR
