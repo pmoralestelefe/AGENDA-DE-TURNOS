@@ -4,6 +4,8 @@ import {
     collection, 
     addDoc, 
     onSnapshot, 
+    query, 
+    orderBy,
     deleteDoc,
     doc,
     updateDoc
@@ -51,7 +53,7 @@ inputDireccion.addEventListener('input', (e) => {
 });
 
 btnMaps.addEventListener('click', () => {
-    window.open(`https://maps.google.com/?q=${encodeURIComponent(inputDireccion.value)}`, '_blank');
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inputDireccion.value)}`, '_blank');
 });
 
 // Botón WhatsApp formulario
@@ -74,7 +76,7 @@ form.addEventListener('submit', async (e) => {
     const fechaObj = new Date(fechaSeleccionada + 'T00:00:00');
     const diaSemanaNum = fechaObj.getDay();
 
-    // VALIDACIONES ORIGINALES
+    // VALIDACIONES
     if (diaSemanaNum === 0) {
         mensajeError.textContent = "No se agendan turnos los domingos.";
         return;
@@ -130,28 +132,15 @@ form.addEventListener('submit', async (e) => {
     }
 });
 
-// LISTADO Y ORDENAMIENTO POR FECHA Y HORA
-onSnapshot(collection(db, "turnos"), (snapshot) => {
+// LISTADO ORDENADO POR FECHA Y HORA (Esto agrupa por Lunes, Martes, etc.)
+const q = query(collection(db, "turnos"), orderBy("fecha", "asc"), orderBy("hora", "asc"));
+
+onSnapshot(q, (snapshot) => {
     listaTurnos.innerHTML = '';
-    
-    // Almacenamos en un array para poder ordenar dinámicamente
-    const turnosArray = [];
-    
+
     snapshot.forEach((docSnap) => {
-        turnosArray.push({ id: docSnap.id, ...docSnap.data() });
-    });
-
-    // Ordenar los turnos: primero por fecha, luego por hora
-    turnosArray.sort((a, b) => {
-        if (a.fecha === b.fecha) {
-            return a.hora.localeCompare(b.hora); // Si es el mismo día, ordena por hora
-        }
-        return a.fecha.localeCompare(b.fecha); // Ordena por día
-    });
-
-    // Renderizar las tarjetas ordenadas
-    turnosArray.forEach((t) => {
-        const id = t.id;
+        const t = docSnap.data();
+        const id = docSnap.id;
 
         const card = document.createElement('div');
         card.className = 'turno-card';
@@ -164,42 +153,39 @@ onSnapshot(collection(db, "turnos"), (snapshot) => {
             <p><strong>Servicio:</strong> ${t.descripcion}</p>
             <p><strong>Precio:</strong> $${t.precio}</p>
 
-            <div class="card-actions">
-                <button class="btn-action btn-maps" title="Ver en Maps">
+            <div class="actions-container">
+                <button class="btn-icon btn-card-maps" title="Ver en Maps">
                     <img src="maps.png" alt="Maps">
                 </button>
-                <button class="btn-action btn-whatsapp" title="WhatsApp">
+                <button class="btn-icon btn-card-wa" title="WhatsApp">
                     <img src="whastapp.png" alt="WhatsApp">
                 </button>
-                <button class="btn-action btn-edit" title="Reprogramar">
-                    <img src="reprogramar.png" alt="Reprogramar">
+                <button class="btn-icon btn-card-edit" title="Reprogramar/Editar">
+                    <img src="reprogramar.png" alt="Editar">
                 </button>
-                <button class="btn-action btn-delete" title="Eliminar">
-                    <img src="borrar.png" alt="Eliminar">
+                <button class="btn-icon btn-card-delete" title="Eliminar">
+                    <img src="borrar.png" alt="Borrar">
                 </button>
             </div>
         `;
 
-        // MAPS
-        card.querySelector('.btn-maps').addEventListener('click', () => {
-            window.open(`https://maps.google.com/?q=${encodeURIComponent(t.direccion)}`, '_blank');
+        // EVENTOS DE LOS BOTONES DE LA TARJETA
+        card.querySelector('.btn-card-maps').addEventListener('click', () => {
+            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.direccion)}`, '_blank');
         });
 
-        // WHATSAPP
-        card.querySelector('.btn-whatsapp').addEventListener('click', () => {
+        card.querySelector('.btn-card-wa').addEventListener('click', () => {
             const tel = t.telefono.replace(/\D/g, '');
             window.open(`https://wa.me/${tel}`, '_blank');
         });
 
-        // ELIMINAR
-        card.querySelector('.btn-delete').addEventListener('click', async () => {
+        card.querySelector('.btn-card-delete').addEventListener('click', async () => {
             if (confirm("¿Eliminar este turno?")) {
                 await deleteDoc(doc(db, "turnos", id));
             }
         });
 
-        // EDITAR / REPROGRAMAR
-        card.querySelector('.btn-edit').addEventListener('click', () => {
+        card.querySelector('.btn-card-edit').addEventListener('click', () => {
             document.getElementById('cliente').value = t.cliente;
             inputTelefono.value = t.telefono;
             inputDireccion.value = t.direccion;
@@ -210,7 +196,6 @@ onSnapshot(collection(db, "turnos"), (snapshot) => {
             document.getElementById('precio').value = t.precio;
 
             editandoId = id;
-
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
 
